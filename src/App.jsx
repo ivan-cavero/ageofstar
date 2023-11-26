@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import Stats from 'stats.js'
 import DebugPanel from './components/Debug/DebugPanel'
@@ -16,15 +16,15 @@ function App () {
   const rendererRef = useRef(new THREE.WebGLRenderer({ antialias: true }))
   const raycasterRef = useRef(new THREE.Raycaster())
   const selectedRef = useRef(null)
+  const targetPositionRef = useRef(null) // Nueva referencia para la posición objetivo
   const selectionIndicatorRef = useRef(null)
   const worldSize = 100
   const cameraRef = useCameraSetup(worldSize)
   useWorldSetup(sceneRef, worldSize)
   useControls(cameraRef)
   useModelLoader(sceneRef)
-  useInteractionHandler(rendererRef, cameraRef, sceneRef, raycasterRef, selectedRef, selectionIndicatorRef)
+  useInteractionHandler(rendererRef, cameraRef, sceneRef, raycasterRef, selectedRef, selectionIndicatorRef, targetPositionRef)
   useResizeHandler(rendererRef, cameraRef, worldSize)
-  const [showDebug, setShowDebug] = useState(true)
   const statsRef = useRef(new Stats())
 
   useEffect(() => {
@@ -40,18 +40,20 @@ function App () {
     stats.dom.style.top = '10px'
     document.body.appendChild(stats.dom)
 
-    const render = () => {
-      requestAnimationFrame(render)
-      if (showDebug) {
-        stats.begin()
+    const animate = () => {
+      requestAnimationFrame(animate)
+      stats.begin()
+
+      if (selectedRef.current && targetPositionRef.current) {
+        const step = 1
+        selectedRef.current.position.lerp(new THREE.Vector3(targetPositionRef.current.x, selectedRef.current.position.y, targetPositionRef.current.z), step)
       }
+
       renderer.render(sceneRef.current, cameraRef.current)
-      if (showDebug) {
-        stats.end()
-      }
+      stats.end()
     }
 
-    render()
+    animate()
 
     return () => {
       if (mount) {
@@ -59,15 +61,12 @@ function App () {
       }
       document.body.removeChild(stats.dom)
     }
-  }, [cameraRef, showDebug])
+  }, [cameraRef])
 
   return (
     <div>
       <div ref={mountRef} className='canvas-container' />
-      {showDebug && <DebugPanel rendererRef={rendererRef} />}
-      <button onClick={() => setShowDebug(!showDebug)}>
-        {showDebug ? 'Disable Debug' : 'Enable Debug'}
-      </button>
+      <DebugPanel rendererRef={rendererRef} />
     </div>
   )
 }
